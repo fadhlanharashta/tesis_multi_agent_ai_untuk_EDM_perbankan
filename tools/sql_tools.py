@@ -232,3 +232,54 @@ def update_data(table_name: str, set_values: str, where_condition: str):
 
     finally:
         conn.close()
+
+@tool
+def delete_data(table_name: str, where_condition: str):
+    """
+    Delete rows from an existing database table.
+
+    IMPORTANT:
+    - table_name = table name only.
+    - where_condition = condition used to select rows to delete.
+    - ALWAYS provide a WHERE condition.
+    - Never delete all rows without a WHERE condition.
+    """
+
+    conn = sqlite3.connect(DATABASE_PATH)
+    conn.execute("PRAGMA foreign_keys = ON")
+    cursor = conn.cursor()
+
+    try:
+        if not where_condition.strip():
+            return {
+                "success": False,
+                "error": "DELETE requires a WHERE condition."
+            }
+
+        sql = f"""
+        DELETE FROM {table_name}
+        WHERE {where_condition}
+        """
+
+        cursor.execute(sql)
+        affected_rows = cursor.rowcount
+
+        conn.commit()
+
+        return {
+            "success": True,
+            "table": table_name,
+            "affected_rows": affected_rows
+        }
+
+    except sqlite3.Error as e:
+        conn.rollback()
+
+        return {
+            "success": False,
+            "error": str(e),
+            "sql": sql
+        }
+
+    finally:
+        conn.close()

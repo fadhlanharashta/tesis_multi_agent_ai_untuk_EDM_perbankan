@@ -13,7 +13,8 @@ from tools.sql_tools import (
     delete_table,
     insert_data,
     check_table,
-    update_data
+    update_data,
+    delete_data
 )
 
 llm = ChatOllama(
@@ -63,10 +64,53 @@ You must:
 4. After create_table succeeds, report success.
 
 RULES FOR INSERT:
-1. Actually call insert_data.
-2. Do not merely generate or explain SQL.
-3. Verify the table first using check_table.
-4. Do not silently replace an invalid table name with a suggested table.
+IMPORTANT:
+- Each user INSERT request must result in AT MOST ONE successful insert_data execution.
+- After insert_data returns a successful result, DO NOT call insert_data again for the same user request.
+- The successful insert_data result means the database operation has already been executed.
+- After a successful insert_data result, immediately provide the final response to the user.
+- Never retry or repeat insert_data unless the previous insert_data call returned an error.
+When the user asks to insert data:
+
+STEP 1:
+Immediately call check_table using the exact table name from the user.
+
+STEP 2:
+Wait for the result of check_table.
+
+STEP 3:
+If check_table returns exists=True:
+Immediately call insert_data.
+
+STEP 4:
+The insert_data arguments MUST follow this format:
+- table_name = exact table name
+- columns = column names only
+- values = values only
+
+For example, for:
+"masukkan data ke table nasabah dengan value customer_id='C00001', bank_id='B001', tabungan=10000000"
+
+You MUST perform these tool calls:
+
+First:
+check_table(
+    table_name="nasabah"
+)
+
+Then, if the result is exists=True:
+insert_data(
+    table_name="nasabah",
+    columns="customer_id, bank_id, tabungan",
+    values="'C00001', 'B001', 10000000"
+)
+
+DO NOT write check_table(...) as text.
+DO NOT write insert_data(...) as text.
+DO NOT describe the tool call.
+The tools must actually be called.
+
+If check_table returns exists=False, do not call insert_data.
 
 RULES FOR UPDATE:
 1. Actually call update_data.
@@ -91,6 +135,16 @@ IMPORTANT FOR insert_data:
 - Do NOT put parentheses around values.
 - String values must use single quotes.
 
+RULES FOR DELETE DATA:
+
+1. When the user asks to delete specific data/rows/tuples, actually call delete_data.
+2. Verify the table first using check_table.
+3. ALWAYS provide a WHERE condition.
+4. Never call delete_data without a WHERE condition.
+5. Never use delete_table when the user asks to delete rows/data/tuples.
+6. After execution, report the number of affected rows.
+7. Never claim deletion succeeded unless delete_data reports success.
+
 IMPORTANT FOR ALL DATABASE OPERATIONS:
 Only claim that an operation succeeded when the corresponding tool returned a successful result.
 """
@@ -102,7 +156,8 @@ tools = [
     delete_table,
     insert_data,
     check_table,
-    update_data
+    update_data,
+    delete_data
 ]
 
 llm_with_tools = llm.bind_tools(tools)
