@@ -3,7 +3,7 @@ import sqlite3
 from pathlib import Path
 from difflib import get_close_matches
 
-DATABASE_PATH = Path(__file__).parent.parent / "database.db"
+DATABASE_PATH = Path(__file__).parent.parent / "financial.db"
 
 @tool
 def get_schema():

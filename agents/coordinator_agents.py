@@ -1,27 +1,17 @@
 from pathlib import Path
-from dotenv import load_dotenv
-from langchain_groq import ChatGroq
-from langchain_core.messages import SystemMessage
-import os
+from langchain_ollama import ChatOllama
 
 from graph.state import AgentState
 
-# llm = ChatOllama(
-#     model="qwen3:4b"
-# )
+llm = ChatOllama(
+    model="qwen3:4b",
+    temperature=0,
+    num_predict=8,
+    think=False
+)
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-load_dotenv(BASE_DIR / ".env")
-
-api_key = os.getenv("GROQ_API_KEY")
-
-llm = ChatGroq(
-    model="qwen/qwen3.8-27b",
-    temperature=0,
-    api_key=api_key
-)
 
 COORDINATOR_PROMPT = """
 You are the Coordinator Agent of a multi-agent database system.
@@ -65,15 +55,23 @@ quality_agent
 """
 
 def coordinatorAgent(state: AgentState):
-    messages = [
-        SystemMessage(content=COORDINATOR_PROMPT)
-    ] + state["messages"]
 
-    response = llm.invoke(messages)
+    user_message = state["messages"][-1].content.lower()
 
-    decision = response.content.strip().lower()
+    quality_keywords = [
+        "data quality",
+        "missing values",
+        "duplicate",
+        "duplicates",
+        "invalid values",
+        "inconsistent data",
+        "suspicious data",
+        "kualitas data",
+        "data duplikat",
+        "data kosong"
+    ]
 
-    if "quality_agent" in decision:
+    if any(keyword in user_message for keyword in quality_keywords):
         selected_agent = "quality_agent"
     else:
         selected_agent = "sql_agent"
